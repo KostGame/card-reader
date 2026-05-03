@@ -1,0 +1,27 @@
+{
+  "format": "cardmark-manifest",
+  "version": "0",
+  "deckType": "tarot-mini",
+  "markerSizeMm": 12,
+  "cards": [
+    {
+      "id": 0,
+      "group": "Старшие арканы",
+      "name": "Шут",
+      "markerId": 0
+    },
+    {
+      "id": 1,
+      "group": "Старшие арканы",
+      "name": "Маг",
+      "markerId": 1
+    },
+    {
+      "id": 2,
+      "group": "Старшие арканы",
+      "name": "Жрица",
+      "markerId": 2
+    }
+  ]
+}
+
