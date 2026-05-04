@@ -1,6 +1,6 @@
 # Roadmap
 
-## PR-000: bootstrap
+## PR-000: bootstrap - completed
 
 - Vite + TypeScript + Vitest.
 - CI через GitHub Actions.
@@ -9,13 +9,15 @@
 - Загрузка и валидация JSON manifest.
 - Документация проекта.
 
-## PR-001: image input and test fixtures
+## PR-001: image input and test fixtures - current
 
 - Загрузка изображения в браузере.
 - Набор тестовых fixture-изображений.
 - Первичные проверки формата и размеров.
+- Mobile-first dark UI.
+- Ручная проверка `markerId` по загруженному manifest.
 
-## PR-002: CardMark grid decoder without camera
+## PR-002: CardMark grid decoder without camera - next
 
 - Декодер сетки CardMark v0 без camera pipeline.
 - Unit-тесты декодирования.
@@ -38,4 +40,3 @@
 - UX для распознавания расклада.
 - Сопоставление найденных `markerId` с загруженным manifest.
 - Явные статусы ошибок и неопределённых результатов.
-

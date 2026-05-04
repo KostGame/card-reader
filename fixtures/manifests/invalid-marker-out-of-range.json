@@ -1,0 +1,15 @@
+{
+  "format": "cardmark-manifest",
+  "version": "0",
+  "deckType": "tarot-mini",
+  "markerSizeMm": 12,
+  "cards": [
+    {
+      "id": 0,
+      "group": "Старшие арканы",
+      "name": "Шут",
+      "markerId": 128
+    }
+  ]
+}
+
