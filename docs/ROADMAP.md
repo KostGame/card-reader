@@ -12,12 +12,12 @@
 ## PR-001: image input and test fixtures - completed
 
 - Загрузка изображения в браузере.
-- Набор тестовых fixture-изображений.
-- Первичные проверки формата и размеров.
+- Preview изображения и метаданные файла.
+- Fixture-структура для manifest и image scenarios.
 - Mobile-first dark UI.
 - Ручная проверка `markerId` по загруженному manifest.
 
-## PR-002: CardMark grid decoder without camera - current
+## PR-002: CardMark grid decoder without camera - completed
 
 - Декодер сетки CardMark v0 без camera pipeline.
 - Unit-тесты декодирования.
@@ -25,17 +25,23 @@
 - Orientation detection по anchor cells.
 - UI test panel для normalized grid fixtures.
 
-## PR-003: marker candidate detection from image - next
+## PR-003: marker candidate detection from image - current
 
-- Поиск кандидатов CardMark-меток на изображении.
-- Набор fixtures для позитивных и негативных сценариев.
-- Интеграционные тесты image pipeline.
+- Поиск CardMark-кандидатов на уже загруженном изображении.
+- Axis-aligned нормализация кандидата без полноценного perspective transform.
+- Sampling кандидата в normalized grid 7x7.
+- Передача sampled grid в decoder PR-002.
+- Экспериментальный UI image analysis panel.
+- Debug overlay для candidates и decoded markers.
+- Synthetic image fixtures для ручной проверки pipeline.
+- Unit-тесты image processing logic.
 
-## PR-004: browser camera mode
+## PR-004: browser camera mode - next
 
 - Доступ к камере в браузере.
 - Безопасная обработка разрешений.
 - Mobile-friendly camera UX.
+- Переиспользование image pipeline из PR-003 без изменения CardMark v0.
 
 ## PR-005: spread recognition UX
 

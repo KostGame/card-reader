@@ -308,18 +308,66 @@ code {
   margin-top: 14px;
 }
 
+.preview-frame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #05070a;
+}
+
 .image-preview-card img {
   display: block;
   width: 100%;
   max-height: 58vh;
-  border: 1px solid var(--line);
-  border-radius: 8px;
   object-fit: contain;
-  background: #05070a;
+}
+
+.candidate-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.candidate-box {
+  position: absolute;
+  border: 2px solid var(--warning);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+
+.candidate-box.decoded {
+  border-color: var(--success);
+}
+
+.candidate-box span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(-100%);
+  border-radius: 4px 4px 0 0;
+  padding: 3px 6px;
+  color: #05110a;
+  background: var(--warning);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.candidate-box.decoded span {
+  background: var(--success);
 }
 
 .image-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
   margin-top: 12px;
+}
+
+.analyze-button {
+  color: var(--accent-ink);
+  border-color: transparent;
+  background: var(--accent);
 }
 
 .meta-list,
@@ -395,6 +443,57 @@ code {
   background: rgba(79, 209, 197, 0.08);
 }
 
+.analysis-result {
+  margin-top: 14px;
+}
+
+.analysis-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.analysis-summary div,
+.candidate-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.analysis-summary dt {
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.analysis-summary dd {
+  margin: 5px 0 0;
+  color: var(--ink);
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.decoded-list,
+.candidate-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.candidate-row {
+  display: grid;
+  gap: 4px;
+}
+
+.candidate-row span {
+  color: var(--ink-muted);
+}
+
+.decoded-card {
+  background: rgba(125, 223, 155, 0.08);
+}
+
 .section-heading span {
   min-width: 42px;
   border: 1px solid var(--line);
@@ -435,6 +534,10 @@ code {
   }
 
   .meta-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .image-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
