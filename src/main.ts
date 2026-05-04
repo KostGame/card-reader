@@ -1,8 +1,10 @@
 import "./styles.css";
 import { decodeCardMarkGrid } from "./cardmarkDecoder";
+import { analyzeImageObjectUrl } from "./canvasImage";
 import { formatFileSize, loadImageFile, revokeImageFileInfo } from "./imageInput";
 import { getManifestTechnicalInfo, parseManifestJson } from "./manifest";
 import type { DecodeResult } from "./cardmarkDecoder";
+import type { ImageAnalysisResult, ImageDecodeCandidateResult, MarkerCandidate } from "./imageProcessing";
 import type { ImageFileInfo, ImageLoadResult } from "./imageInput";
 import type { CardMarkCard, CardMarkManifest, ManifestParseResult, ManifestTechnicalInfo } from "./types";
 
@@ -13,6 +15,8 @@ type AppState = {
   manualMarkerId: string;
   decoderInput: string;
   decoderResult: DecodeResult | null;
+  imageAnalysis: ImageAnalysisResult | null;
+  imageAnalysisPending: boolean;
 };
 
 const state: AppState = {
@@ -21,7 +25,9 @@ const state: AppState = {
   imageResult: null,
   manualMarkerId: "",
   decoderInput: "",
-  decoderResult: null
+  decoderResult: null,
+  imageAnalysis: null,
+  imageAnalysisPending: false
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -44,14 +50,14 @@ function render(): void {
         <div>
           <p class="eyebrow">CardMark browser reader</p>
           <h1>Card Reader</h1>
-          <p class="lead">Мобильный просмотр manifest, изображения, ручной проверки markerId и технического декодера нормализованной сетки.</p>
+          <p class="lead">Мобильный просмотр manifest, изображения и экспериментального поиска CardMark-кандидатов в загруженном файле.</p>
         </div>
-        <span class="status-pill">PR-002</span>
+        <span class="status-pill">PR-003</span>
       </header>
 
       <section class="notice" aria-labelledby="recognition-title">
-        <h2 id="recognition-title">Распознавание по изображению пока не реализовано</h2>
-        <p>PR-002 декодирует только уже нормализованную сетку 7×7. Изображение, canvas sampling, поиск меток и камера остаются задачами следующих PR.</p>
+        <h2 id="recognition-title">Экспериментальное распознавание из файла</h2>
+        <p>PR-003 анализирует только загруженное изображение и лучше работает на synthetic или контрастных почти ровных метках. Камера не реализована.</p>
       </section>
 
       <section class="mobile-stack" aria-label="Основные действия">
@@ -72,7 +78,7 @@ function render(): void {
         <div class="panel primary-panel">
           <div class="panel-heading">
             <div>
-              <p class="panel-kicker">Файл для будущего pipeline</p>
+              <p class="panel-kicker">Файл для экспериментального pipeline</p>
               <h2>Изображение</h2>
             </div>
           </div>
@@ -96,7 +102,7 @@ function render(): void {
 
         <div class="panel placeholder-panel">
           <h2>Распознавание изображения</h2>
-          <p>Эта версия не ищет CardMark-метки на изображении и не анализирует preview автоматически.</p>
+          <p>PR-003 анализирует только загруженный файл по кнопке. Камера, live preview и потоковое распознавание будут добавлены позже.</p>
         </div>
       </section>
 
@@ -108,6 +114,7 @@ function render(): void {
   document.querySelector<HTMLInputElement>("#manifest-input")?.addEventListener("change", handleManifestInput);
   document.querySelector<HTMLInputElement>("#image-input")?.addEventListener("change", handleImageInput);
   document.querySelector<HTMLButtonElement>("#clear-image")?.addEventListener("click", clearImage);
+  document.querySelector<HTMLButtonElement>("#analyze-image")?.addEventListener("click", analyzeLoadedImage);
   document.querySelector<HTMLInputElement>("#manual-marker-id")?.addEventListener("input", handleManualMarkerInput);
   document.querySelector<HTMLTextAreaElement>("#decoder-input")?.addEventListener("input", handleDecoderInput);
   document.querySelector<HTMLButtonElement>("#decode-grid")?.addEventListener("click", decodeGridFromPanel);
@@ -166,12 +173,162 @@ function renderImageState(): string {
 
   return `
     <div class="image-preview-card">
-      <img src="${escapeHtml(image.objectUrl)}" alt="Preview загруженного изображения" />
+      <div class="preview-frame">
+        <img src="${escapeHtml(image.objectUrl)}" alt="Preview загруженного изображения" />
+        ${renderImageOverlay()}
+      </div>
       <div class="image-actions">
+        <button class="ghost-button analyze-button" id="analyze-image" type="button">${state.imageAnalysisPending ? "Анализируем..." : "Найти CardMark-метки"}</button>
         <button class="ghost-button" id="clear-image" type="button">Очистить изображение</button>
       </div>
       ${renderImageMeta(image)}
-      <p class="helper-text">Preview не является распознаванием. Изображение только загружено и показано в браузере.</p>
+      <p class="helper-text">Это экспериментальный анализ загруженного файла, не камера. Реальные фото могут не распознаться.</p>
+      ${renderImageAnalysis()}
+    </div>
+  `;
+}
+
+function renderImageOverlay(): string {
+  if (!state.imageAnalysis?.ok || state.imageAnalysis.candidates.length === 0) {
+    return "";
+  }
+
+  const analysis = state.imageAnalysis;
+  const decodedByCandidate = new Map<string, ImageDecodeCandidateResult>();
+
+  for (const decoded of analysis.decoded) {
+    decodedByCandidate.set(decoded.candidate.id, decoded);
+  }
+
+  return `
+    <div class="candidate-overlay" aria-hidden="true">
+      ${analysis.candidates
+        .map((candidate) => renderCandidateOverlayBox(candidate, decodedByCandidate.get(candidate.id), analysis))
+        .join("")}
+    </div>
+  `;
+}
+
+function renderCandidateOverlayBox(
+  candidate: MarkerCandidate,
+  decoded: ImageDecodeCandidateResult | undefined,
+  analysis: Extract<ImageAnalysisResult, { ok: true }>
+): string {
+  const left = (candidate.bounds.x / analysis.imageWidth) * 100;
+  const top = (candidate.bounds.y / analysis.imageHeight) * 100;
+  const width = (candidate.bounds.width / analysis.imageWidth) * 100;
+  const height = (candidate.bounds.height / analysis.imageHeight) * 100;
+  const label = decoded?.decode.ok ? `#${decoded.decode.markerId}` : "candidate";
+
+  return `
+    <div
+      class="candidate-box ${decoded ? "decoded" : ""}"
+      style="left:${left}%;top:${top}%;width:${width}%;height:${height}%"
+    >
+      <span>${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+function renderImageAnalysis(): string {
+  if (state.imageAnalysisPending) {
+    return `<div class="status-card neutral"><strong>Анализируем изображение</strong><span>Ищем контрастные квадратные кандидаты и sampling 7×7.</span></div>`;
+  }
+
+  if (!state.imageAnalysis) {
+    return `<div class="status-card neutral"><strong>Анализ не запускался</strong><span>Нажмите “Найти CardMark-метки”, чтобы проверить загруженное изображение.</span></div>`;
+  }
+
+  if (!state.imageAnalysis.ok) {
+    return `
+      <div class="status-card danger">
+        <strong>Изображение не проанализировано</strong>
+        <ul class="error-list">
+          ${state.imageAnalysis.errors.map((error) => `<li>${escapeHtml(error)}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  }
+
+  const manifest = state.parseResult?.ok ? state.parseResult.manifest : null;
+
+  return `
+    <section class="analysis-result" aria-label="Результат анализа изображения">
+      <div class="analysis-summary">
+        ${renderSummaryMetric("Кандидаты", `${state.imageAnalysis.candidates.length}`)}
+        ${renderSummaryMetric("Декодировано", `${state.imageAnalysis.decoded.length}`)}
+      </div>
+      ${state.imageAnalysis.warnings.length > 0 ? renderAnalysisWarnings(state.imageAnalysis.warnings) : ""}
+      ${state.imageAnalysis.decoded.length > 0 ? renderDecodedImageResults(state.imageAnalysis.decoded, manifest) : renderCandidateList(state.imageAnalysis.candidates)}
+    </section>
+  `;
+}
+
+function renderSummaryMetric(label: string, value: string): string {
+  return `
+    <div>
+      <dt>${escapeHtml(label)}</dt>
+      <dd>${escapeHtml(value)}</dd>
+    </div>
+  `;
+}
+
+function renderAnalysisWarnings(warnings: string[]): string {
+  return `
+    <div class="status-card neutral compact">
+      <strong>Предупреждения</strong>
+      <ul class="error-list">
+        ${warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function renderDecodedImageResults(results: ImageDecodeCandidateResult[], manifest: CardMarkManifest | null): string {
+  return `
+    <div class="decoded-list">
+      ${results.map((result) => renderDecodedImageResult(result, manifest)).join("")}
+    </div>
+  `;
+}
+
+function renderDecodedImageResult(result: ImageDecodeCandidateResult, manifest: CardMarkManifest | null): string {
+  const decode = result.decode;
+
+  if (!decode.ok) {
+    return "";
+  }
+
+  const card = manifest ? findCardByMarkerId(manifest, decode.markerId) : null;
+
+  return `
+    <article class="match-card decoded-card">
+      <p class="panel-kicker">Image candidate decoded</p>
+      <h3>markerId ${decode.markerId}</h3>
+      <dl class="meta-list compact-meta">
+        ${renderMetaItem("orientation", `${decode.orientation}`)}
+        ${renderMetaItem("decoder confidence", `${decode.confidence}`)}
+        ${renderMetaItem("candidate score", `${result.candidate.score}`)}
+        ${renderMetaItem("bounds", formatBounds(result.candidate))}
+      </dl>
+      ${card ? renderLinkedCard(card) : `<p class="helper-text decoder-helper">Загрузите manifest, чтобы сопоставить markerId с картой.</p>`}
+    </article>
+  `;
+}
+
+function renderCandidateList(candidates: MarkerCandidate[]): string {
+  if (candidates.length === 0) {
+    return "";
+  }
+
+  return `
+    <div class="candidate-list">
+      ${candidates.map((candidate) => `
+        <article class="candidate-row">
+          <strong>${escapeHtml(candidate.id)}</strong>
+          <span>score ${candidate.score}; ${escapeHtml(formatBounds(candidate))}</span>
+        </article>
+      `).join("")}
     </div>
   `;
 }
@@ -319,13 +476,19 @@ function renderDecoderManifestMapping(
   return `
     <div class="linked-card">
       <p class="panel-kicker">Карта из manifest</p>
-      <h3>${escapeHtml(card.name)}</h3>
-      <dl class="meta-list compact-meta">
-        ${renderMetaItem("Группа", card.group)}
-        ${renderMetaItem("id", `${card.id}`)}
-        ${renderMetaItem("markerId", `${card.markerId}`)}
-      </dl>
+      ${renderLinkedCard(card)}
     </div>
+  `;
+}
+
+function renderLinkedCard(card: CardMarkCard): string {
+  return `
+    <h3>${escapeHtml(card.name)}</h3>
+    <dl class="meta-list compact-meta">
+      ${renderMetaItem("Группа", card.group)}
+      ${renderMetaItem("id", `${card.id}`)}
+      ${renderMetaItem("markerId", `${card.markerId}`)}
+    </dl>
   `;
 }
 
@@ -424,6 +587,8 @@ async function handleImageInput(event: Event): Promise<void> {
   }
 
   state.imageResult = await loadImageFile(file);
+  state.imageAnalysis = null;
+  state.imageAnalysisPending = false;
   render();
 }
 
@@ -433,6 +598,28 @@ function clearImage(): void {
   }
 
   state.imageResult = null;
+  state.imageAnalysis = null;
+  state.imageAnalysisPending = false;
+  render();
+}
+
+async function analyzeLoadedImage(): Promise<void> {
+  if (!state.imageResult?.ok) {
+    state.imageAnalysis = {
+      ok: false,
+      errors: ["Сначала загрузите изображение."],
+      warnings: []
+    };
+    render();
+    return;
+  }
+
+  state.imageAnalysisPending = true;
+  state.imageAnalysis = null;
+  render();
+
+  state.imageAnalysis = await analyzeImageObjectUrl(state.imageResult.image.objectUrl);
+  state.imageAnalysisPending = false;
   render();
 }
 
@@ -504,6 +691,11 @@ function parseManualMarkerId(input: string):
 
 function findCardByMarkerId(manifest: CardMarkManifest, markerId: number): CardMarkCard | null {
   return manifest.cards.find((card) => card.markerId === markerId) ?? null;
+}
+
+function formatBounds(candidate: MarkerCandidate): string {
+  const bounds = candidate.bounds;
+  return `${bounds.x}, ${bounds.y}, ${bounds.width}×${bounds.height}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

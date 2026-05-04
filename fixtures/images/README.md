@@ -13,3 +13,10 @@
 
 `synthetic-placeholder.svg` - маленькое синтетическое изображение для проверки UI preview. Оно не является распознаваемым эталоном CardMark и не должно использоваться как доказательство готовности decoder pipeline.
 
+PR-003 добавляет небольшие SVG fixtures для ручной проверки экспериментального image pipeline:
+
+- `synthetic-single-marker-042.svg` - одна контрастная axis-aligned метка `markerId 42`;
+- `synthetic-multiple-markers.svg` - две контрастные метки в одном изображении;
+- `synthetic-rotated-marker-042.svg` - метка `markerId 42`, повернутая на 90 градусов.
+
+Эти SVG предназначены для проверки загрузки изображения, candidate detection, 7×7 sampling и decoder bridge. Они не гарантируют качество на реальных фото.

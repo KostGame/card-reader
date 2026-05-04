@@ -12,7 +12,9 @@ git diff --check
 
 Ручные проверки:
 
-- открыть UI в мобильной и desktop ширине;
+- открыть UI в мобильной ширине 390px;
+- открыть UI в desktop ширине 1280px;
+- убедиться, что тёмная тема включена по умолчанию;
 - загрузить валидный manifest;
 - убедиться, что валидный manifest отображает список карт и техническую информацию;
 - загрузить невалидный manifest;
@@ -24,17 +26,20 @@ git diff --check
 - в ручном режиме ввести существующий `markerId`;
 - в ручном режиме ввести отсутствующий `markerId`;
 - в ручном режиме ввести некорректный `markerId`;
-- проверить UI в мобильной ширине;
-- проверить desktop layout;
-- убедиться, что тёмная тема включена по умолчанию;
 - декодировать valid grid `markerId` 0;
 - декодировать valid grid `markerId` 42;
 - декодировать valid grid `markerId` 127;
 - проверить invalid grid size;
 - проверить corrupted grid;
 - проверить rotated grid 90/180/270;
-- проверить UI test panel;
+- проверить UI test panel decoder из PR-002;
 - проверить сопоставление decoded `markerId` с manifest;
 - убедиться, что image upload не запускает decoder автоматически;
-- убедиться, что camera отсутствует;
+- загрузить synthetic image fixture;
+- запустить "Найти CardMark-метки";
+- проверить decoded markerId из synthetic image fixture;
+- проверить manifest mapping после image decode;
+- проверить blank/invalid image case;
+- проверить debug overlay на preview;
+- убедиться, что камера отсутствует;
 - после merge проверить GitHub Pages.
