@@ -12,3 +12,6 @@
 - UI по умолчанию должен быть mobile-first и dark theme;
 - не добавлять светлую тему или сложный theme switcher без отдельной задачи;
 - не ухудшать мобильный сценарий ради desktop.
+- decoder должен оставаться отделённым от image detection;
+- PR-002 не должен добавлять camera/image recognition;
+- при сомнении сверяться с CardMark v0 generator contract.
