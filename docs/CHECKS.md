@@ -27,4 +27,14 @@ git diff --check
 - проверить UI в мобильной ширине;
 - проверить desktop layout;
 - убедиться, что тёмная тема включена по умолчанию;
+- декодировать valid grid `markerId` 0;
+- декодировать valid grid `markerId` 42;
+- декодировать valid grid `markerId` 127;
+- проверить invalid grid size;
+- проверить corrupted grid;
+- проверить rotated grid 90/180/270;
+- проверить UI test panel;
+- проверить сопоставление decoded `markerId` с manifest;
+- убедиться, что image upload не запускает decoder автоматически;
+- убедиться, что camera отсутствует;
 - после merge проверить GitHub Pages.

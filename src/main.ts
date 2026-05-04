@@ -1,6 +1,8 @@
 import "./styles.css";
+import { decodeCardMarkGrid } from "./cardmarkDecoder";
 import { formatFileSize, loadImageFile, revokeImageFileInfo } from "./imageInput";
 import { getManifestTechnicalInfo, parseManifestJson } from "./manifest";
+import type { DecodeResult } from "./cardmarkDecoder";
 import type { ImageFileInfo, ImageLoadResult } from "./imageInput";
 import type { CardMarkCard, CardMarkManifest, ManifestParseResult, ManifestTechnicalInfo } from "./types";
 
@@ -9,13 +11,17 @@ type AppState = {
   parseResult: ManifestParseResult | null;
   imageResult: ImageLoadResult | null;
   manualMarkerId: string;
+  decoderInput: string;
+  decoderResult: DecodeResult | null;
 };
 
 const state: AppState = {
   fileName: null,
   parseResult: null,
   imageResult: null,
-  manualMarkerId: ""
+  manualMarkerId: "",
+  decoderInput: "",
+  decoderResult: null
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -38,14 +44,14 @@ function render(): void {
         <div>
           <p class="eyebrow">CardMark browser reader</p>
           <h1>Card Reader</h1>
-          <p class="lead">Мобильный просмотр manifest, изображения и ручной проверки markerId. Распознавание CardMark-меток пока не реализовано.</p>
+          <p class="lead">Мобильный просмотр manifest, изображения, ручной проверки markerId и технического декодера нормализованной сетки.</p>
         </div>
-        <span class="status-pill">PR-001</span>
+        <span class="status-pill">PR-002</span>
       </header>
 
       <section class="notice" aria-labelledby="recognition-title">
-        <h2 id="recognition-title">Распознавание пока не реализовано</h2>
-        <p>Сейчас доступны загрузка manifest, preview изображения и ручная проверка markerId. Камера и декодирование появятся в следующих PR.</p>
+        <h2 id="recognition-title">Распознавание по изображению пока не реализовано</h2>
+        <p>PR-002 декодирует только уже нормализованную сетку 7×7. Изображение, canvas sampling, поиск меток и камера остаются задачами следующих PR.</p>
       </section>
 
       <section class="mobile-stack" aria-label="Основные действия">
@@ -80,6 +86,8 @@ function render(): void {
         ${renderManualCheck(manifest)}
       </section>
 
+      ${renderDecoderTestPanel(manifest)}
+
       <section class="placeholder-grid" aria-label="Будущие режимы">
         <div class="panel placeholder-panel">
           <h2>Камера</h2>
@@ -87,8 +95,8 @@ function render(): void {
         </div>
 
         <div class="panel placeholder-panel">
-          <h2>Распознавание</h2>
-          <p>Декодирование CardMark-меток пока не реализовано. Эта версия не анализирует изображение автоматически.</p>
+          <h2>Распознавание изображения</h2>
+          <p>Эта версия не ищет CardMark-метки на изображении и не анализирует preview автоматически.</p>
         </div>
       </section>
 
@@ -101,6 +109,8 @@ function render(): void {
   document.querySelector<HTMLInputElement>("#image-input")?.addEventListener("change", handleImageInput);
   document.querySelector<HTMLButtonElement>("#clear-image")?.addEventListener("click", clearImage);
   document.querySelector<HTMLInputElement>("#manual-marker-id")?.addEventListener("input", handleManualMarkerInput);
+  document.querySelector<HTMLTextAreaElement>("#decoder-input")?.addEventListener("input", handleDecoderInput);
+  document.querySelector<HTMLButtonElement>("#decode-grid")?.addEventListener("click", decodeGridFromPanel);
 }
 
 function renderManifestStatus(): string {
@@ -238,6 +248,87 @@ function renderManualResult(
   `;
 }
 
+function renderDecoderTestPanel(manifest: CardMarkManifest | null): string {
+  return `
+    <section class="panel decoder-panel" aria-labelledby="decoder-title">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Техническая проверка, не image recognition</p>
+          <h2 id="decoder-title">Тест декодера</h2>
+        </div>
+      </div>
+      <label class="field-label" for="decoder-input">JSON grid fixture</label>
+      <textarea
+        class="decoder-textarea"
+        id="decoder-input"
+        spellcheck="false"
+        placeholder='{"format":"cardmark-grid-fixture","version":"0","grid":[[1,1,1,1,1,1,1]]}'
+      >${escapeHtml(state.decoderInput)}</textarea>
+      <button class="ghost-button decode-button" id="decode-grid" type="button">Декодировать сетку</button>
+      <p class="helper-text">Вставьте fixture из <code>fixtures/grids</code> или саму матрицу 7×7. Изображение из preview здесь не используется.</p>
+      ${renderDecoderResult(manifest)}
+    </section>
+  `;
+}
+
+function renderDecoderResult(manifest: CardMarkManifest | null): string {
+  if (!state.decoderResult) {
+    return `<div class="status-card neutral"><strong>Сетка ещё не декодировалась</strong><span>Результат появится после запуска технической проверки.</span></div>`;
+  }
+
+  if (!state.decoderResult.ok) {
+    return `
+      <div class="status-card danger">
+        <strong>Сетка не декодирована</strong>
+        <span>Confidence: ${state.decoderResult.confidence}</span>
+        <ul class="error-list">
+          ${state.decoderResult.errors.map((error) => `<li><code>${escapeHtml(error.path)}</code> ${escapeHtml(error.message)}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  }
+
+  const matchedCard = manifest ? findCardByMarkerId(manifest, state.decoderResult.markerId) : null;
+
+  return `
+    <article class="match-card decoder-result">
+      <p class="panel-kicker">Normalized grid decoded</p>
+      <h3>markerId ${state.decoderResult.markerId}</h3>
+      <dl class="meta-list compact-meta">
+        ${renderMetaItem("orientation", `${state.decoderResult.orientation}`)}
+        ${renderMetaItem("confidence", `${state.decoderResult.confidence}`)}
+      </dl>
+      ${renderDecoderManifestMapping(manifest, matchedCard, state.decoderResult.markerId)}
+    </article>
+  `;
+}
+
+function renderDecoderManifestMapping(
+  manifest: CardMarkManifest | null,
+  card: CardMarkCard | null,
+  markerId: number
+): string {
+  if (!manifest) {
+    return `<p class="helper-text decoder-helper">Загрузите manifest, чтобы сопоставить markerId с картой.</p>`;
+  }
+
+  if (!card) {
+    return `<p class="helper-text decoder-helper">В загруженном manifest нет карты с markerId ${markerId}.</p>`;
+  }
+
+  return `
+    <div class="linked-card">
+      <p class="panel-kicker">Карта из manifest</p>
+      <h3>${escapeHtml(card.name)}</h3>
+      <dl class="meta-list compact-meta">
+        ${renderMetaItem("Группа", card.group)}
+        ${renderMetaItem("id", `${card.id}`)}
+        ${renderMetaItem("markerId", `${card.markerId}`)}
+      </dl>
+    </div>
+  `;
+}
+
 function renderTechnicalInfo(info: ManifestTechnicalInfo): string {
   const duplicateText =
     info.duplicateMarkerIds.length > 0 ? info.duplicateMarkerIds.join(", ") : "нет";
@@ -351,6 +442,33 @@ function handleManualMarkerInput(event: Event): void {
   render();
 }
 
+function handleDecoderInput(event: Event): void {
+  const input = event.currentTarget as HTMLTextAreaElement;
+  state.decoderInput = input.value;
+}
+
+function decodeGridFromPanel(): void {
+  try {
+    const parsed = JSON.parse(state.decoderInput);
+    const gridInput = isRecord(parsed) && "grid" in parsed ? parsed.grid : parsed;
+    state.decoderResult = decodeCardMarkGrid(gridInput);
+  } catch {
+    state.decoderResult = {
+      ok: false,
+      errors: [
+        {
+          path: "$",
+          code: "invalid_json",
+          message: "JSON fixture не удалось прочитать. Проверьте синтаксис."
+        }
+      ],
+      confidence: 0
+    };
+  }
+
+  render();
+}
+
 function parseManualMarkerId(input: string):
   | {
       ok: true;
@@ -386,6 +504,10 @@ function parseManualMarkerId(input: string):
 
 function findCardByMarkerId(manifest: CardMarkManifest, markerId: number): CardMarkCard | null {
   return manifest.cards.find((card) => card.markerId === markerId) ?? null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function escapeHtml(value: string): string {

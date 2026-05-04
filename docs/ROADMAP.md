@@ -9,7 +9,7 @@
 - Загрузка и валидация JSON manifest.
 - Документация проекта.
 
-## PR-001: image input and test fixtures - current
+## PR-001: image input and test fixtures - completed
 
 - Загрузка изображения в браузере.
 - Набор тестовых fixture-изображений.
@@ -17,13 +17,15 @@
 - Mobile-first dark UI.
 - Ручная проверка `markerId` по загруженному manifest.
 
-## PR-002: CardMark grid decoder without camera - next
+## PR-002: CardMark grid decoder without camera - current
 
 - Декодер сетки CardMark v0 без camera pipeline.
 - Unit-тесты декодирования.
 - Проверка диапазона `markerId`.
+- Orientation detection по anchor cells.
+- UI test panel для normalized grid fixtures.
 
-## PR-003: marker candidate detection from image
+## PR-003: marker candidate detection from image - next
 
 - Поиск кандидатов CardMark-меток на изображении.
 - Набор fixtures для позитивных и негативных сценариев.

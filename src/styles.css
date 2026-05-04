@@ -41,7 +41,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -225,6 +226,26 @@ h3 {
   outline: none;
 }
 
+.decoder-textarea {
+  width: 100%;
+  min-height: 220px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--ink);
+  background: #0a0f16;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  outline: none;
+  resize: vertical;
+}
+
+.decoder-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
 .number-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -356,8 +377,22 @@ code {
 
 .technical-panel,
 .cards-section,
-.placeholder-grid {
+.placeholder-grid,
+.decoder-panel {
   margin-top: 14px;
+}
+
+.decode-button {
+  margin-top: 12px;
+}
+
+.decoder-helper,
+.linked-card {
+  margin-top: 14px;
+}
+
+.decoder-result {
+  background: rgba(79, 209, 197, 0.08);
 }
 
 .section-heading span {
@@ -417,4 +452,3 @@ code {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-
